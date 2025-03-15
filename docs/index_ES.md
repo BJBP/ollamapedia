@@ -1,6 +1,6 @@
 # Documentación
 
-Esta es la documentación para la Página Web de Streaming con Ollama.
+Esta es la documentación para Ollamapedia.
 
 ## Descripción general
 

@@ -1,16 +1,24 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ollama Streaming</title>
+    <title>Ollamapedia</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Ollama Streaming con phi4-mini</h1>
+    <h1>Ollamapedia</h1>
+    <label for="model">Select a model:</label>
+    <select id="model"></select>
     <div id="output"></div>
-    <input type="text" id="prompt" placeholder="Escribe tu prompt aquí">
-    <button id="send">Enviar</button>
-    <script src="script.js"></script>
+    <div id="prompt-container">
+        <input type="text" id="prompt" placeholder="Enter your prompt here">
+        <button id="send">Send</button>
+    </div>
+    <h3>View Found Articles</h3>
+    <div id="search-results-container">
+        <div id="search-results"></div>
+    </div>
 </body>
+<script src="script.js"></script>
 </html>

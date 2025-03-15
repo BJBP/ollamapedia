@@ -1,10 +1,10 @@
 # Documentation
 
-This is the documentation for the Ollama Streaming Web Page.
+This is the documentation for Ollamapedia.
 
 ## Overview
 
-This web page provides a simple interface for interacting with the Ollama language model using streaming responses. It allows users to enter a prompt and receive a real-time, chunked response from the model.
+This web page allows the user to ask a question, extract key terms from that question, search for relevant information in a Kiwix library, and then use that information as context to get a more accurate response from a language model through the Ollama API.
 
 ## Files
 

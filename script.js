@@ -1,13 +1,52 @@
-document.addEventListener('DOMContentLoaded', () => {
+// Detect browser language
+const lang = navigator.language || navigator.userLanguage;
+
+// Redirect to Spanish if language is Spanish
+if (lang.startsWith('es')) {
+    // Redirect to Spanish version
+    window.location.href = 'index_es.html';
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
     const output = document.getElementById('output');
     const promptInput = document.getElementById('prompt');
     const sendButton = document.getElementById('send');
+    const modelSelect = document.getElementById('model');
     const searchResultsDiv = document.getElementById('search-results'); // Para mostrar resultados de Kiwix
     const articleContentDiv = document.getElementById('article-content'); // Y el contenido del artículo.
 
     const ollamaEndpoint = 'http://localhost:11434/api/generate'; // URL de Ollama
     const kiwixServerIP = "192.168.1.114";  // IP de Kiwix
-    const kiwixServerPort = "80";          // Puerto de Kiwix
+    const kiwixServerPort = "8080";          // Puerto de Kiwix
+
+    // Function to fetch available models from Ollama API
+    async function getOllamaModels() {
+        try {
+            const response = await fetch('http://localhost:11434/api/tags');
+            if (!response.ok) {
+                throw new Error(`Ollama API error: ${response.status}`);
+            }
+            const data = await response.json();
+            return data.models || [];
+        } catch (error) {
+            console.error("Error fetching Ollama models:", error);
+            return [];
+        }
+    }
+
+    // Populate the model select dropdown
+    async function populateModelDropdown() {
+        const models = await getOllamaModels();
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.name;
+            option.textContent = model.name;
+            modelSelect.appendChild(option);
+        });
+    }
+
+    // Call the function to populate the dropdown
+    await populateModelDropdown();
 
     // Función para buscar en Kiwix y formatear resultados
     async function searchKiwix(searchTerm) {
@@ -39,12 +78,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     contexto_adicional: [],
                 });
             }
+            const resultsTable = displayKiwixResults(kiwixResults);
+            searchResultsDiv.innerHTML = resultsTable;
+
+            const searchResultsContainer = document.getElementById('search-results-container');
+            searchResultsContainer.style.display = 'none';
+
             return kiwixResults;
 
         } catch (error) {
             console.error("Error searching Kiwix:", error);
             return []; // Return empty array on error
         }
+    }
+
+    function displayKiwixResults(results) {
+        let table = '<table class="kiwix-results">';
+        table += '<thead><tr><th>Término</th><th>Título del Artículo</th><th>Resumen</th></tr></thead>';
+        table += '<tbody>';
+        results.forEach(result => {
+            table += `<tr><td>${result.termino}</td><td>${result.titulo_articulo}</td><td>${result.resumen}</td></tr>`;
+        });
+        table += '</tbody></table>';
+        return table;
     }
 
      // Función auxiliar para obtener el texto del artículo
@@ -60,8 +116,15 @@ document.addEventListener('DOMContentLoaded', () => {
            const doc = parser.parseFromString(html, 'text/html');
            const content = doc.querySelector('div.mw-parser-output');
            if (!content) return '';
-           const firstParagraph = content.querySelector('p');
-           return firstParagraph ? firstParagraph.textContent : '';
+           let paragraphs = content.querySelectorAll('p');
+           let combinedText = '';
+           for (let i = 0; i < paragraphs.length; i++) {
+               if (combinedText.length > 500) {
+                   break;
+               }
+               combinedText += paragraphs[i].textContent + '\n\n';
+           }
+           return combinedText;
 
         } catch(error){
           console.error("Error en fetch", error);
@@ -85,6 +148,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return firstSentence.length > 50 ? firstSentence : articleText.substring(0, maxLength) + "...";
     }
 
+    const searchResultsContainer = document.getElementById('search-results-container');
+    const articlesTitle = document.querySelector('h3');
+
+    articlesTitle.addEventListener('click', () => {
+        if (searchResultsContainer.style.display === 'none') {
+            searchResultsContainer.style.display = 'block';
+        } else {
+            searchResultsContainer.style.display = 'none';
+        }
+    });
+
     sendButton.addEventListener('click', async () => {
         const userPrompt = promptInput.value;
         output.textContent = 'Procesando...';
@@ -92,12 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Extraer términos clave (usando el LLM)
         let keyTerms = [];
         try {
+            console.log("LLM Request (terms):", userPrompt);
+            const selectedModel = modelSelect.value;
             const termsResponse = await fetch(ollamaEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'phi4-mini:latest',
-                    prompt: `Extract always the most important keyword from the following query and return it as a JSON array. The keyword should be the one that best represents the main topic of the query. If the query contains several important keywords, select the one that is most specific and relevant to the overall context. Ensure that the extracted keyword is a noun or a noun phrase that captures the essence of the query. If the query is vague or ambiguous, try to identify the underlying intention and choose the keyword that best aligns with that intention. If the query contains grammatical or spelling errors, correct the errors before extracting the keyword. If the query is in a language other than English, translate it to English before extracting the keyword. If the query is a question, extract the keyword that represents the subject of the question. If the query is a command, extract the keyword that represents the object of the command. If the query is a statement, extract the keyword that represents the subject of the statement. If you cannot identify an important keyword, return an empty JSON array. Query: \"${userPrompt}\". Response format: {\"keywords\": [\"keyword\"]}`,
+                    model: selectedModel,
+                    prompt: `Extract always the most important keyword from the following query and return it as a JSON array. The keyword should be the one that best represents the main topic of the query. If the query contains several important keywords, select the one that is most specific and relevant to the overall context. Ensure that the extracted keyword is a noun or a noun phrase that captures the essence of the query. If the query is vague or ambiguous, try to identify the underlying intention and choose the keyword that best aligns with that intention. If the query contains grammatical or spelling errors, correct the errors before extracting the keyword. The keyword should be in its original language. If the query is a question, command, or statement, extract the keyword that represents the subject, object, or topic, respectively, without including any interrogative words (e.g., "what", "which", "who", "where", "when", "how", "why"). If you cannot identify an important keyword, return an empty JSON array. Query: \"${userPrompt}\". Response format: {\"keywords\": [\"keyword\"]}`,
                     stream: false,
                     format: 'json'
                 })
@@ -107,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`Ollama (terms) HTTP error: ${termsResponse.status}`);
             }
             const termsData = await termsResponse.json();
+            console.log("LLM Response (terms):", termsData);
 
             try {
                 // Intentar parsear la respuesta como JSON directamente
@@ -141,18 +218,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (keyTerms.length > 0) {
             const results = await searchKiwix(keyTerms[0]);
             if (results.length > 0) {
-                kiwixContext = [results[0]]; // Only take the first result
+                kiwixContext = results.slice(0, 10); // Take the first 3 results
              }
         }
 
         // 3. Construir el prompt final para el LLM
         const contextPrompt = kiwixContext.length > 0
-            ? `Contexto de Wikipedia en json:\n${JSON.stringify(kiwixContext.map(item => ({
+            ? `Artículos:\n${JSON.stringify(kiwixContext.map(item => ({
                 termino: item.termino,
                 titulo_articulo: item.titulo_articulo,
                 contenido_articulo: item.contenido_articulo
             })), null, 2)}\n\n`
-            : "No se encontró contexto relevante en Wikipedia.\n\n";
+            : "No se encontró contexto relevante en Artículos.\n\n";
 
         console.log("User prompt:", userPrompt);
         console.log("Key terms:", keyTerms);
@@ -162,19 +239,19 @@ document.addEventListener('DOMContentLoaded', () => {
             contenido_articulo: item.contenido_articulo
         })));
 
-        const finalPrompt = `${contextPrompt}. Responde la siguiente pregunta: ${userPrompt}`;
+        const finalPrompt = `${contextPrompt}Indica que entiendes de la pregunta, luego Escoge los artículos que sean más adecuado para responder, luego  en base a los articulos mas adecuados responde la siguiente pregunta: ${userPrompt}`;
         console.log("Final prompt:", finalPrompt);
 
         // 4. Enviar el prompt final a Ollama y mostrar la respuesta en streaming
         try {
+            const selectedModel = modelSelect.value;
             const response = await fetch(ollamaEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'phi4-mini:latest',
+                    model: selectedModel,
                     prompt: finalPrompt,
-                    stream: true,
-                    format: 'json'
+                    stream: true
                 })
             });
 
@@ -205,6 +282,5 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error fetching final response:', error);
             output.textContent = `Error: ${error.message}`;
         }
-        promptInput.value = '';
     });
 });

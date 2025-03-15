@@ -14,10 +14,23 @@ body {
     min-height: 100px;
 }
 
-input[type="text"] {
-    width: 70%;
+#prompt-container {
+    display: flex;
+    width: 80%; /* Same width as output */
+    margin-top: 10px;
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: white; /* Ensure background color */
     padding: 10px;
-    margin: 10px 0;
+    box-shadow: 0px -2px 5px rgba(0,0,0,0.2); /* Optional shadow for better visibility */
+}
+
+input[type="text"] {
+    flex-grow: 1; /* Input takes remaining space */
+    padding: 10px;
+    margin: 0;
 }
 
 button {
@@ -26,4 +39,41 @@ button {
     color: white;
     border: none;
     cursor: pointer;
+}
+
+h3 {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 20px;
+    font-size: 1em;
+}
+
+#search-results-container {
+    margin-top: 0px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    width: 80%;
+    display: none; /* Initially hidden */
+}
+
+#search-results {
+    min-height: 100px;
+}
+
+.kiwix-results {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.kiwix-results th, .kiwix-results td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.kiwix-results th {
+    background-color: #f2f2f2;
 }
